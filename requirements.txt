@@ -1,0 +1,19 @@
+# 核心运行依赖（与当前代码 import 对齐）
+PyQt5==5.15.11
+pyqtdarktheme==2.1.0
+
+# TTS 引擎
+pyttsx3==2.99
+comtypes==1.4.13
+edge-tts==7.3.1
+
+# 音频设备枚举与播放（core/audio_manager.py 与 core/workers/tts_worker.py）
+PyAudio==0.2.14
+sounddevice==0.5.3
+soundfile==0.13.1
+numpy==2.2.6
+
+# 打包（可选：使用 main.spec 时需要）
+pyinstaller==6.16.0
+pyinstaller-hooks-contrib==2025.9
+

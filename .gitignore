@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+
+# IDE
+.idea/
+
+# Build & packages
+build/
+dist/
+*.rar
+*.7z
+*.zip
+
+# Runtime data & personal content
+audios/
+conf/*.json
+preset_audio/*
+!preset_audio/.gitkeep
+
+# IDE-generated source dump
+codes.txt
+
+# OS
+Thumbs.db
+desktop.ini
