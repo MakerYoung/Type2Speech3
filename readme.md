@@ -23,21 +23,41 @@
 ## 目录结构（关键部分）
 
 - `main.py`: 程序入口，创建 `QApplication` 并显示主窗口
-- `ui/`: UI 层（`ui/main_window.py` 为主窗口）
-- `core/`: 业务核心（TTS 引擎、后台 worker、音频设备管理等）
+- `ui/`: UI 层（`ui/main_window.py` 为主窗口，只负责界面与信号绑定）
+- `app/`: 应用服务层
+  - `app/paths.py`: 数据目录解析与旧数据迁移
+  - `app/config.py`: 配置读写（原子写入、默认值校正）
+  - `app/history.py`: 历史记录模型与存储
+  - `app/presets.py`: 文本/音频预设管理
+  - `app/hotkeys.py`: 热键注册表与监听线程生命周期
+  - `app/playback.py`: 合成/播放任务调度
+- `core/`: TTS 引擎、后台 worker、音频设备管理等
   - `core/engines/pyttsx3_engine.py`: 本地 TTS
   - `core/engines/edge_tts_engine.py`: Edge 在线 TTS
   - `core/engines/api_engine.py`: 在线 API 引擎骨架（未实现，供二次开发）
   - `core/audio_manager.py`: 输出设备枚举（PyAudio）
-- `utils/`: 配置/历史/热键等
-  - `utils/config_manager.py`: `conf/config.json` 的读写
-  - `utils/history_manager.py`: `conf/history.json` 的读写
+- `utils/`: Windows 底层工具
   - `utils/hotkey_manager.py`: Windows 全局热键监听
-- `conf/`:
-  - `conf/config.json`: 用户配置
-  - `conf/history.json`: 历史记录
-- `audios/`: 本地音频素材目录（预设音频通常从这里管理）
+  - `utils/keyboard_injector.py`: 游戏内开麦按键注入
+  - `utils/window_manager.py`: 游戏窗口聚焦
+- `tests/`: 服务层单元测试（`python -m unittest discover -s tests`）
 - `resources/`: 图标等资源（`resources/icon.png`）
+
+## 用户数据目录
+
+自 v3.0.0 起，配置、历史、生成音频和预设音频统一存放在：
+
+```
+%APPDATA%\Type2Speech3\
+├── conf\config.json
+├── conf\history.json
+├── audios\
+└── preset_audio\
+```
+
+- 首次运行会自动从旧的 `conf/`、`preset_audio/` 位置迁移一次，不影响原文件。
+- 可通过环境变量 `TYPE2SPEECH_DATA_DIR` 指定其它目录。
+- 数据与程序目录分离，重新打包/覆盖安装不会清空配置。
 
 ## 运行环境
 
@@ -46,9 +66,10 @@
 
 ## 安装依赖
 
-安装 `requirements.txt`，
+安装 `requirements.txt`：
+
 ```bash
-pip install -t requirements.txt
+python -m pip install -r requirements.txt
 ```
 
 
@@ -78,7 +99,7 @@ python main.py
 
 ## 配置文件说明
 
-配置文件默认为 `conf/config.json`，部分常用字段示例（以实际文件为准）：
+配置文件默认为 `%APPDATA%\Type2Speech3\conf\config.json`，部分常用字段示例（以实际文件为准）：
 
 - `last_device_name`: 上次选择的输出设备名（用于回显）
 - `last_engine`: 上次使用的引擎（如 `EdgeTTS` / `PyTTSX3`）
@@ -92,11 +113,11 @@ python main.py
 - `sys_hotkeys`: 系统级功能快捷键映射（见下）
 - `auto_clear_history`: 启动时是否自动清理历史记录
 
-历史记录文件为 `conf/history.json`，记录文本、生成音频路径、语速、引擎、音色等信息。
+历史记录文件为 `%APPDATA%\Type2Speech3\conf\history.json`，记录文本、生成音频路径、语速、引擎、音色等信息。
 
 ## 全局快捷键（Windows）
 
-项目使用 Windows API 全局监听快捷键（`utils/hotkey_manager.py`）。默认配置通常位于 `conf/config.json` 的 `sys_hotkeys` 中，例如：
+项目使用 Windows API 全局监听快捷键（`utils/hotkey_manager.py`）。默认配置通常位于用户配置文件的 `sys_hotkeys` 中，例如：
 
 - `sys_toggle_window`: 显示/隐藏窗口
 - `sys_stop_play`: 停止播放
@@ -137,14 +158,18 @@ python -m pip install pyinstaller
 pyinstaller main.spec
 ```
 
-打包结果通常会输出到 `dist/` 目录中（具体以 PyInstaller 输出为准）。
+打包结果通常会输出到 `dist/` 目录中（具体以 PyInstaller 输出为准）。用户数据在 `%APPDATA%\Type2Speech3`，重新打包不会清除配置。
 
 ## 常见问题排查
 
 - **打开即报错/缺少模块**：先确认依赖已安装（尤其是 `PyQt5`、`qdarktheme`、`edge-tts`、`pyttsx3`、`pyaudio`）
-- **没有声音/设备选择异常**：检查系统输出设备与 `conf/config.json` 的 `last_device_name` 是否与当前设备匹配
+- **没有声音/设备选择异常**：检查系统输出设备与配置文件中的 `last_device_name` 是否与当前设备匹配
 - **全局快捷键无效**：
   - 可能被其它软件占用（尤其是 `ctrl+num*` 等）
   - 以管理员权限运行可能更稳定（视系统策略而定）
+- **EdgeTTS 报 403 / `Invalid response status`**：通常是 edge-tts 版本落后于微软服务端校验，升级到最新版即可：
+  ```bash
+  python -m pip install -U edge-tts
+  ```
 - **EdgeTTS 音色列表加载失败**：检查网络环境；失败时会回退到默认音色
 
