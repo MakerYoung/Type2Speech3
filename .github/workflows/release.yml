@@ -1,0 +1,78 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "要发布或补传附件的已有 tag（例如 v3.0.0）"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref_name }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Run unit tests
+        run: python -m unittest discover -s tests -v
+
+      - name: Build executable
+        run: python -m PyInstaller main.spec --noconfirm
+
+      - name: Package and prepare release notes
+        shell: pwsh
+        run: |
+          $tag = $env:TAG
+          $version = $tag.TrimStart('v')
+          $zip = "Type2Speech3-$tag-win64.zip"
+
+          Compress-Archive -Path "dist/main/*" -DestinationPath $zip -Force
+
+          $hash = (Get-FileHash -Path $zip -Algorithm SHA256).Hash.ToLower()
+          "$hash  $zip" | Out-File "$zip.sha256" -Encoding ascii
+
+          python scripts/changelog_notes.py $version -o release_notes.md
+          Add-Content release_notes.md ""
+          Add-Content release_notes.md "### 下载校验"
+          Add-Content release_notes.md ""
+          Add-Content release_notes.md "SHA256: $hash"
+
+      - name: Create or update GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tag = $env:TAG
+          $zip = "Type2Speech3-$tag-win64.zip"
+
+          gh release view $tag 2>$null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $tag $zip "$zip.sha256" --clobber
+            gh release edit $tag --notes-file release_notes.md
+          } else {
+            gh release create $tag `
+              --title "Type2Speech3 $tag" `
+              --notes-file release_notes.md `
+              $zip "$zip.sha256"
+          }

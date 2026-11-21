@@ -12,6 +12,13 @@
 
 应用入口为 `main.py`，主窗口实现位于 `ui/main_window.py`。
 
+## 链接
+
+- 下载：[GitHub Releases](https://github.com/MakerYoung/Type2Speech3/releases)
+- 变更记录：[CHANGELOG.md](CHANGELOG.md)
+- 发布流程：[RELEASING.md](RELEASING.md)
+- 发布说明模板：[docs/release-notes-template.md](docs/release-notes-template.md)
+
 
 ## 典型用法
 - 本应用界面的输出设备选voicemeeter banana 的 voicemeeter aux input。
@@ -41,6 +48,8 @@
   - `utils/keyboard_injector.py`: 游戏内开麦按键注入
   - `utils/window_manager.py`: 游戏窗口聚焦
 - `tests/`: 服务层单元测试（`python -m unittest discover -s tests`）
+- `scripts/`: 发布工具（`scripts/release.py`、`scripts/changelog_notes.py`）
+- `.github/workflows/`: CI 与 tag 触发的自动发布流水线
 - `resources/`: 图标等资源（`resources/icon.png`）
 
 ## 用户数据目录
