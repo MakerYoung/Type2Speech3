@@ -12,7 +12,7 @@ import threading
 from ctypes import wintypes
 from typing import Dict
 
-from PyQt5.QtCore import QThread, pyqtSignal
+from PySide6.QtCore import QThread, Signal
 
 user32 = ctypes.windll.user32
 kernel32 = ctypes.windll.kernel32
@@ -87,7 +87,7 @@ def parse_hotkey_string(hotkey_str: str) -> tuple[int, int]:
 
 
 class HotkeyManager(QThread):
-    hotkey_triggered = pyqtSignal(str)
+    hotkey_triggered = Signal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)

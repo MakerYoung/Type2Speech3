@@ -2,14 +2,14 @@
 
 import logging
 
-from PyQt5.QtCore import QObject, QRunnable, pyqtSignal
+from PySide6.QtCore import QObject, QRunnable, Signal
 
 from core.engines.tts_engine import TTSEngine
 
 
 class VoiceLoaderSignals(QObject):
-    finished = pyqtSignal(int, list)  # request_id, voices
-    error = pyqtSignal(int, str)      # request_id, message
+    finished = Signal(int, list)  # request_id, voices
+    error = Signal(int, str)      # request_id, message
 
 
 class VoiceLoaderWorker(QRunnable):

@@ -3,7 +3,7 @@
 
 import logging
 
-from PyQt5.QtCore import QObject, pyqtSignal
+from PySide6.QtCore import QObject, Signal
 
 from app.config import ConfigManager
 from utils.hotkey_manager import HotkeyManager
@@ -106,7 +106,7 @@ class HotkeyRegistry:
 class HotkeyService(QObject):
     """管理监听线程：每次配置变化时重建线程，确保注册发生在监听线程内。"""
 
-    triggered = pyqtSignal(str)
+    triggered = Signal(str)
 
     def __init__(self, registry: HotkeyRegistry, parent=None):
         super().__init__(parent)

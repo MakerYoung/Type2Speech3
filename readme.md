@@ -1,8 +1,8 @@
-# Type2Speech3 项目介绍与使用（v3.0.0）
+# Type2Speech3 项目介绍与使用
 
 ## 简介
 
-`Type2Speech3`，又名 `我是你的嘴` 是一个运行在 Windows 上的桌面文本转语音（TTS）工具，基于 **PyQt5** 构建 UI，并使用 **qdarktheme** 提供现代化主题。项目支持：
+`Type2Speech3`，又名 `我是你的嘴` 是一个运行在 Windows 上的桌面文本转语音（TTS）工具，基于 **PySide6** 构建 UI，并使用 **qdarktheme** 提供现代化主题。项目支持：
 
 - 文本一键合成语音并播放，播放到扬声器，结合voiceMeeter banana 播放到麦克风
 - 文本预设、音频预设（本地音频快捷播放）
@@ -100,7 +100,7 @@ python -m pip install -r requirements.txt
 
 ```bash
 python -m pip install -U pip
-python -m pip install PyQt5 qdarktheme pyttsx3 edge-tts pyaudio
+python -m pip install PySide6 qdarktheme pyttsx3 edge-tts pyaudio
 ```
 
 ### 关于 `pyaudio`（常见安装问题）
@@ -186,7 +186,7 @@ pyinstaller main.spec
 
 ## 常见问题排查
 
-- **打开即报错/缺少模块**：先确认依赖已安装（尤其是 `PyQt5`、`qdarktheme`、`edge-tts`、`pyttsx3`、`pyaudio`）
+- **打开即报错/缺少模块**：先确认依赖已安装（尤其是 `PySide6`、`qdarktheme`、`edge-tts`、`pyttsx3`、`pyaudio`）
 - **没有声音/设备选择异常**：检查系统输出设备与配置文件中的 `last_device_name` 是否与当前设备匹配
 - **全局快捷键无效**：
   - 可能被其它软件占用（尤其是 `ctrl+num*` 等）

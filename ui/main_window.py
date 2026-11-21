@@ -6,9 +6,9 @@ import time
 import uuid
 from pathlib import Path
 
-from PyQt5.QtCore import Qt, QEvent, QThreadPool, QTimer, QPropertyAnimation
-from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import (
+from PySide6.QtCore import Qt, QEvent, QThreadPool, QTimer, QPropertyAnimation
+from PySide6.QtGui import QIcon
+from PySide6.QtWidgets import (
     QCheckBox, QComboBox, QDialog, QDoubleSpinBox, QFileDialog,
     QGraphicsOpacityEffect, QHBoxLayout, QInputDialog, QLabel,
     QListWidget, QListWidgetItem, QMainWindow, QMenu, QMessageBox,

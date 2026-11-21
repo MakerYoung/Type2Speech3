@@ -1,14 +1,14 @@
 # ui/components/float_input_window.py
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout,
+from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout,
                              QLineEdit, QSlider, QCheckBox, QLabel,
                              QPushButton, QFrame, QSizeGrip, QSizePolicy,
                              QTextEdit)
-from PyQt5.QtCore import pyqtSignal, Qt, QPoint
+from PySide6.QtCore import Signal, Qt, QPoint
 
 
 class FloatInputWindow(QWidget):
-    text_submitted = pyqtSignal(str)
-    open_mic_submitted = pyqtSignal(bool)
+    text_submitted = Signal(str)
+    open_mic_submitted = Signal(bool)
 
     def __init__(self, parent=None):
         super().__init__(parent)

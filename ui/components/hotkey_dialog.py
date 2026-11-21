@@ -1,6 +1,6 @@
 # ui/components/hotkey_dialog.py
-from PyQt5.QtWidgets import QPushButton, QDialog, QVBoxLayout, QLabel, QDialogButtonBox, QHBoxLayout
-from PyQt5.QtCore import Qt, QTimer
+from PySide6.QtWidgets import QPushButton, QDialog, QVBoxLayout, QLabel, QDialogButtonBox, QHBoxLayout
+from PySide6.QtCore import Qt, QTimer
 
 
 class HotkeyInputButton(QPushButton):

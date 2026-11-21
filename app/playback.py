@@ -7,7 +7,7 @@
 
 import logging
 
-from PyQt5.QtCore import QObject, QThreadPool, pyqtSignal
+from PySide6.QtCore import QObject, QThreadPool, Signal
 
 from app.history import HistoryRecord
 from core.engines.tts_engine import TTSEngine
@@ -15,10 +15,10 @@ from core.workers.tts_worker import TTSWorker
 
 
 class PlaybackController(QObject):
-    busy_changed = pyqtSignal(bool)
-    error = pyqtSignal(str)
-    converted = pyqtSignal(object)  # HistoryRecord
-    played = pyqtSignal(str)        # 文件路径
+    busy_changed = Signal(bool)
+    error = Signal(str)
+    converted = Signal(object)  # HistoryRecord
+    played = Signal(str)        # 文件路径
 
     def __init__(self, parent=None):
         super().__init__(parent)

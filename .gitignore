@@ -31,3 +31,7 @@ desktop.ini
 
 # fallback data dir when %APPDATA% is unavailable
 userdata/
+
+# alternate build output dirs
+build-*/
+dist-*/

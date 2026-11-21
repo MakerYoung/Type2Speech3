@@ -8,7 +8,7 @@ import time
 
 import sounddevice as sd
 import soundfile as sf
-from PyQt5.QtCore import QObject, QRunnable, pyqtSignal
+from PySide6.QtCore import QObject, QRunnable, Signal
 
 from core.engines.tts_engine import TTSEngine
 from utils.keyboard_injector import KeyboardInjector
@@ -22,9 +22,9 @@ class TTSWorker(QRunnable):
     _hardware_lock = threading.Lock()
 
     class WorkerSignals(QObject):
-        finished_signal = pyqtSignal(str, str)  # 文本, 音频路径
-        error_signal = pyqtSignal(str)
-        stopped_signal = pyqtSignal()
+        finished_signal = Signal(str, str)  # 文本, 音频路径
+        error_signal = Signal(str)
+        stopped_signal = Signal()
 
     def __init__(
         self,

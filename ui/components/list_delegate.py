@@ -1,7 +1,7 @@
 # ui/components/list_delegate.py
-from PyQt5.QtWidgets import QStyledItemDelegate, QStyle, QStyleOptionViewItem
-from PyQt5.QtGui import QFont, QColor, QPalette, QFontMetrics
-from PyQt5.QtCore import Qt, QRect, QSize
+from PySide6.QtWidgets import QStyledItemDelegate, QStyle, QStyleOptionViewItem
+from PySide6.QtGui import QFont, QColor, QPalette, QFontMetrics
+from PySide6.QtCore import Qt, QRect, QSize
 
 
 class HotkeyItemDelegate(QStyledItemDelegate):
