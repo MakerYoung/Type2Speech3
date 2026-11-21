@@ -27,6 +27,7 @@ from ui.components.hotkey_dialog import HotkeyBindDialog, SystemHotkeyDialog
 from ui.components.list_delegate import HotkeyItemDelegate
 from ui.components.float_input_window import FloatInputWindow
 from utils.window_manager import WindowManager
+from version import APP_VERSION
 
 import logging
 
@@ -129,7 +130,7 @@ class MainWindow(QMainWindow):
     # ==========================================
     def _init_ui(self):
         """主 UI 初始化 (加入 QSplitter 实现区域可拖拽)"""
-        self.setWindowTitle("我是你的嘴")
+        self.setWindowTitle(f"我是你的嘴 v{APP_VERSION}")
         self.setGeometry(100, 100, 550, 750)  # 稍微加宽加高一点，让现代布局有呼吸空间
         self.setWindowIcon(QIcon("resources/icon.png"))
         self.setWindowFlags(Qt.X11BypassWindowManagerHint)

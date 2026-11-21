@@ -1,8 +1,8 @@
-# Type2Speech2 项目介绍与使用
+# Type2Speech3 项目介绍与使用（v3.0.0）
 
 ## 简介
 
-`Type2Speech2`，又名 `我是你的嘴` 是一个运行在 Windows 上的桌面文本转语音（TTS）工具，基于 **PyQt5** 构建 UI，并使用 **qdarktheme** 提供现代化主题。项目支持：
+`Type2Speech3`，又名 `我是你的嘴` 是一个运行在 Windows 上的桌面文本转语音（TTS）工具，基于 **PyQt5** 构建 UI，并使用 **qdarktheme** 提供现代化主题。项目支持：
 
 - 文本一键合成语音并播放，播放到扬声器，结合voiceMeeter banana 播放到麦克风
 - 文本预设、音频预设（本地音频快捷播放）
