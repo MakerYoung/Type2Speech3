@@ -1,16 +1,60 @@
 # utils/hotkey_manager.py
-import ctypes
-from ctypes import wintypes
-from PyQt5.QtCore import pyqtSignal, QThread
-from typing import Dict
-import logging
+"""Windows 全局热键监听线程。
 
-# 加载必要的 DLL
+RegisterHotKey/UnregisterHotKey 和消息循环都具有线程亲和性：
+注册、消息处理、注销都必须发生在同一个线程里。因此这里只在 run()
+中注册，在 run() 退出前注销；外部只需要 start()/stop()。
+"""
+
+import ctypes
+import logging
+import threading
+from ctypes import wintypes
+from typing import Dict
+
+from PyQt5.QtCore import QThread, pyqtSignal
+
 user32 = ctypes.windll.user32
 kernel32 = ctypes.windll.kernel32
 
+WM_HOTKEY = 0x0312
+WM_QUIT = 0x0012
 
-# --- Windows 消息结构体定义 ---
+MOD_ALT = 0x0001
+MOD_CONTROL = 0x0002
+MOD_SHIFT = 0x0004
+MOD_WIN = 0x0008
+
+VK_MAP = {
+    '.': 0xDE,
+    ',': 0xBC,
+    '/': 0xBF,
+    ' ': 0x20,
+    'space': 0x20,
+    'tab': 0x09,
+    'enter': 0x0D,
+    'pagedown': 0x22,
+    'pageup': 0x21,
+    'escape': 0x1B,
+}
+for _i in range(10):
+    VK_MAP[str(_i)] = 0x30 + _i
+for _i in range(26):
+    _char = chr(ord('a') + _i)
+    VK_MAP[_char] = 0x41 + _i
+for _i in range(10):
+    VK_MAP[f'num{_i}'] = 0x60 + _i
+VK_MAP.update({
+    'num_dot': 0x6E,
+    'num_add': 0x6B,
+    'num_sub': 0x6D,
+    'num_mul': 0x6A,
+    'num_div': 0x6F,
+})
+
+_MODIFIERS = {'ctrl': MOD_CONTROL, 'alt': MOD_ALT, 'shift': MOD_SHIFT, 'win': MOD_WIN}
+
+
 class MSG(ctypes.Structure):
     _fields_ = [
         ("hwnd", wintypes.HWND),
@@ -18,83 +62,31 @@ class MSG(ctypes.Structure):
         ("wParam", wintypes.WPARAM),
         ("lParam", wintypes.LPARAM),
         ("time", wintypes.DWORD),
-        ("pt", wintypes.POINT)
+        ("pt", wintypes.POINT),
     ]
 
 
-# --- 常量定义 ---
-WM_HOTKEY = 0x0312
-
-# 修饰键标志
-MOD_ALT = 0x0001
-MOD_CONTROL = 0x0002
-MOD_SHIFT = 0x0004
-MOD_WIN = 0x0008
-
-# --- 虚拟键码映射 (VK_MAP) ---
-VK_MAP = {
-    '.': 0xDE,  # VK_OEM_PERIOD
-    ',': 0xBC,  # VK_OEM_COMMA
-    '/': 0xBF,  # VK_OEM_2
-    ' ': 0x20,  # VK_SPACE
-    'space': 0x20,  # VK_SPACE
-    'tab': 0x09,  # VK_TAB
-    'enter': 0x0D,  # VK_RETURN
-    'pagedown': 0x22,
-}
-# 数字键 0-9
-for i in range(10):
-    VK_MAP[str(i)] = 0x30 + i
-# 字母键 A-Z
-for i in range(26):
-    char = chr(ord('a') + i)
-    VK_MAP[char] = 0x41 + i
-# 数字小键盘 (NumPad)
-for i in range(10):
-    VK_MAP[f'num{i}'] = 0x60 + i  # VK_NUMPAD0 到 VK_NUMPAD9
-VK_MAP['num_dot'] = 0x6E
-VK_MAP['num_add'] = 0x6B
-VK_MAP['num_sub'] = 0x6D
-VK_MAP['num_mul'] = 0x6A
-VK_MAP['num_div'] = 0x6F
-
-
 def parse_hotkey_string(hotkey_str: str) -> tuple[int, int]:
-    """
-    解析热键字符串 (如 'ctrl+alt+a') 为 Windows MOD 和 VK。
-    """
+    """把 'ctrl+alt+a' 解析为 (MOD 标志, VK 虚拟键码)。"""
     parts = hotkey_str.lower().split('+')
     mod_flags = 0
     vk_code = 0
 
     for part in parts:
-        if part == 'ctrl':
-            mod_flags |= MOD_CONTROL
-        elif part == 'alt':
-            mod_flags |= MOD_ALT
-        elif part == 'shift':
-            mod_flags |= MOD_SHIFT
-        elif part == 'win':
-            mod_flags |= MOD_WIN
+        if part in _MODIFIERS:
+            mod_flags |= _MODIFIERS[part]
         elif part in VK_MAP:
             vk_code = VK_MAP[part]
-        elif len(part) == 1 and part.isalpha():
-            vk_code = VK_MAP[part]
         else:
-            logging.warning(f"警告：无法识别的热键部分: {part}")
-            return 0, 0  # 失败
+            logging.warning("无法识别的热键部分: %s", part)
+            return 0, 0
 
     if vk_code == 0:
         raise ValueError(f"热键必须包含一个非修饰键: {hotkey_str}")
-
     return mod_flags, vk_code
 
 
 class HotkeyManager(QThread):
-    """
-    纯粹的热键监听器，使用 Windows API (ctypes) 在单独线程中监听。
-    不再包含按键注入逻辑。
-    """
     hotkey_triggered = pyqtSignal(str)
 
     def __init__(self, parent=None):
@@ -104,120 +96,79 @@ class HotkeyManager(QThread):
         self.next_hotkey_id = 100
         self.id_to_name: Dict[int, str] = {}
         self._win_thread_id = None
+        self._ready = threading.Event()
 
-    def register_hotkey(self, name: str, hotkey: str):
-        if name in self.hotkeys_data:
-            self.unregister_hotkey(name)
+    def register_hotkey(self, name: str, hotkey: str) -> bool:
+        """只允许在 start() 之前调用（注册必须在监听线程内完成）。"""
+        if self.isRunning():
+            logging.error("热键监听已启动，无法动态注册 %s；请重建 HotkeyManager", name)
+            return False
 
         try:
             mod, vk = parse_hotkey_string(hotkey)
-        except ValueError as e:
-            logging.error(f"注册热键失败 {name}: {e}")
-            return
-
+        except ValueError as exc:
+            logging.error("注册热键失败 %s: %s", name, exc)
+            return False
         if vk == 0:
-            return
+            return False
 
         hotkey_id = self.next_hotkey_id
         self.next_hotkey_id += 1
-
-        data = {'mod': mod, 'vk': vk, 'id': hotkey_id, 'hotkey_str': hotkey}
-        self.hotkeys_data[name] = data
+        self.hotkeys_data[name] = {'mod': mod, 'vk': vk, 'id': hotkey_id, 'hotkey_str': hotkey}
         self.id_to_name[hotkey_id] = name
+        return True
 
-        if self.isRunning():
-            self._register_single_hotkey(data)
+    def _register_all(self) -> None:
+        for name, data in self.hotkeys_data.items():
+            success = user32.RegisterHotKey(None, data['id'], data['mod'], data['vk'])
+            if not success:
+                logging.error(
+                    "注册热键失败 %s (%s)，可能已被其它程序占用",
+                    name, data['hotkey_str'],
+                )
 
-        # logging.info(f"待注册热键: {name} -> {hotkey}")
-
-    def unregister_hotkey(self, name: str):
-        if name in self.hotkeys_data:
-            data = self.hotkeys_data.pop(name)
-            hotkey_id = data['id']
-
-            if self.isRunning():
-                user32.UnregisterHotKey(None, hotkey_id)
-                logging.info(f"已注销API热键 ID:{hotkey_id}")
-
-            if hotkey_id in self.id_to_name:
-                del self.id_to_name[hotkey_id]
-
-    def _register_single_hotkey(self, data: dict):
-        hotkey_id = data['id']
-        success = user32.RegisterHotKey(None, hotkey_id, data['mod'], data['vk'])
-
-        if success:
-            pass
-            # logging.info(f"注册API热键成功 ID:{hotkey_id} -> {data['hotkey_str']}")
-        else:
-            logging.error(f"注册API热键失败 ID:{data}，错误码: {ctypes.get_last_error()}")
-
-        return success
-
-    def run(self):
-        logging.info("热键监听线程已启动")
-
-        # 强制系统为当前线程创建消息队列
-        self._win_thread_id = kernel32.GetCurrentThreadId()
-        msg = MSG()
-        user32.PeekMessageA(ctypes.byref(msg), None, 0, 0, 0x0000)
-
-        for data in self.hotkeys_data.values():
-            self._register_single_hotkey(data)
-
-        # 消息循环
-        while self._running:
-            if user32.GetMessageA(ctypes.byref(msg), None, 0, 0) != 0:
-                if msg.message == WM_HOTKEY:
-                    hotkey_id = msg.wParam
-                    if hotkey_id in self.id_to_name:
-                        hotkey_name = self.id_to_name[hotkey_id]
-                        self.hotkey_triggered.emit(hotkey_name)
-                        # logging.info(f'触发热键: {hotkey_name}')
-
-                elif msg.message == 0x12:  # WM_QUIT
-                    self._running = False
-
-                user32.TranslateMessage(ctypes.byref(msg))
-                user32.DispatchMessageA(ctypes.byref(msg))
-            else:
-                self._running = False
-
-        self.remove_all_hotkeys()
-        logging.info("热键监听线程已安全退出")
-
-    def remove_all_hotkeys(self):
+    def _unregister_all(self) -> None:
         for hotkey_id in list(self.id_to_name.keys()):
             user32.UnregisterHotKey(None, hotkey_id)
         self.hotkeys_data.clear()
         self.id_to_name.clear()
 
-    # def remove_all_hotkeys(self):
-    #     import ctypes
-    #     import logging
-    #
-    #     for hotkey_id in list(self.id_to_name.keys()):
-    #         # 这里的 None 极大可能是罪魁祸首！
-    #         # 先试着看它有没有成功
-    #         res = ctypes.windll.user32.UnregisterHotKey(None, hotkey_id)
-    #
-    #         if res == 0:
-    #             # 获取 Windows 底层真实错误码
-    #             error_code = ctypes.windll.kernel32.GetLastError()
-    #             logging.error(f"❌ 快捷键 {hotkey_id} 释放失败！Win32错误码: {error_code}")
-    #         else:
-    #             logging.info(f"✅ 快捷键 {hotkey_id} 释放成功！")
-    #
-    #     self.hotkeys_data.clear()
-    #     self.id_to_name.clear()
+    def run(self):
+        logging.info("热键监听线程已启动")
+        self._win_thread_id = kernel32.GetCurrentThreadId()
+
+        # 强制系统为当前线程创建消息队列（之后 stop() 才能 PostThreadMessage）
+        msg = MSG()
+        user32.PeekMessageA(ctypes.byref(msg), None, 0, 0, 0x0000)
+        self._ready.set()
+
+        self._register_all()
+        try:
+            while self._running:
+                result = user32.GetMessageA(ctypes.byref(msg), None, 0, 0)
+                if result == 0:
+                    break
+                if result == -1:
+                    logging.error("热键消息循环异常退出")
+                    break
+                if msg.message == WM_HOTKEY:
+                    hotkey_name = self.id_to_name.get(msg.wParam)
+                    if hotkey_name:
+                        self.hotkey_triggered.emit(hotkey_name)
+                elif msg.message == WM_QUIT:
+                    break
+                user32.TranslateMessage(ctypes.byref(msg))
+                user32.DispatchMessageA(ctypes.byref(msg))
+        finally:
+            self._unregister_all()
+            logging.info("热键监听线程已安全退出")
 
     def stop(self):
+        if not self.isRunning():
+            return
         self._running = False
-        self.remove_all_hotkeys()
-
-        thread_id = self._win_thread_id
-        if thread_id is not None:
-            logging.info(f"发送 WM_QUIT 终止线程 ID: {thread_id}")
-            user32.PostThreadMessageA(thread_id, 0x12, 0, 0)
-
+        # 等待 run() 拿到线程 ID，避免在启动瞬间调用 stop 时死等
+        self._ready.wait(1.0)
+        if self._win_thread_id is not None:
+            user32.PostThreadMessageA(self._win_thread_id, WM_QUIT, 0, 0)
         self.wait()

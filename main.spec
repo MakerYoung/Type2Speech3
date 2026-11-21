@@ -5,7 +5,7 @@ a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[],
-    datas=[],
+    datas=[('resources/icon.png', 'resources')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
