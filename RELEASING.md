@@ -87,6 +87,7 @@ python scripts/release.py 3.1.0
 
 ### 3.4 发布后验证
 
+- [ ] CI 成品冒烟测试通过（Release 流水线中的 “Smoke test packaged app”）
 - [ ] Release 页面的正文与 CHANGELOG 一致
 - [ ] `.zip` 与 `.sha256` 均可下载
 - [ ] 解压后 `main.exe` 可启动，标题显示新版本号

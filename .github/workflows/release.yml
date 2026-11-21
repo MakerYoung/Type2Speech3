@@ -40,6 +40,25 @@ jobs:
       - name: Build executable
         run: python -m PyInstaller main.spec --noconfirm
 
+      - name: Smoke test packaged app
+        shell: pwsh
+        env:
+          QT_QPA_PLATFORM: offscreen
+          TYPE2SPEECH_SMOKE_EXIT_MS: "3000"
+          TYPE2SPEECH_DATA_DIR: "${{ runner.temp }}/type2speech-smoke"
+        run: |
+          $p = Start-Process -FilePath "dist/main/main.exe" -PassThru
+          if (-not $p.WaitForExit(90000)) {
+            Stop-Process -Id $p.Id -Force
+            throw "packaged app did not exit in time"
+          }
+          if ($p.ExitCode -ne 0) {
+            throw "packaged app exited with code $($p.ExitCode)"
+          }
+          if (-not (Test-Path "$env:TYPE2SPEECH_DATA_DIR/conf/config.json")) {
+            throw "packaged app did not create config.json"
+          }
+
       - name: Package and prepare release notes
         shell: pwsh
         run: |
