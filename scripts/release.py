@@ -62,6 +62,14 @@ def repo_slug_from_url(url: str) -> str | None:
     return match.group(1) if match else None
 
 
+def _porcelain_path(line: str) -> str:
+    """从 `git status --porcelain` 行中取出相对路径。"""
+    path = line[2:].strip()
+    if " -> " in path:
+        path = path.split(" -> ")[-1]
+    return path.strip('"')
+
+
 def run(cmd: list[str], *, dry_run: bool = False, capture: bool = False) -> str:
     printable = " ".join(cmd)
     print(f"  $ {printable}")
@@ -97,7 +105,7 @@ def ensure_preconditions(new_version: str, branch: str, dry_run: bool, skip_remo
     dirty = git("status", "--porcelain", capture=True).splitlines()
     unexpected = [
         line for line in dirty
-        if line.strip() and not line[3:].strip().endswith("CHANGELOG.md")
+        if line.strip() and _porcelain_path(line) != "CHANGELOG.md"
     ]
     if unexpected:
         raise ReleaseError(
