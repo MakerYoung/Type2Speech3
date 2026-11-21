@@ -6,11 +6,17 @@
 
 ## [Unreleased]
 
+## [3.0.1] - 2026-11-21
+
 ### Added
 
 - 标准发布流程：`CHANGELOG.md`、`RELEASING.md`、发布说明模板与 `scripts/release.py`
 - GitHub Actions：CI 单元测试；tag 触发自动打包、生成 SHA256 并发布 Release 附件
 - 发布工具单元测试（CHANGELOG 提取、版本校验、仓库地址解析）
+
+### Fixed
+
+- 修复 CI 打包时 PNG 图标未转换导致 PyInstaller 构建失败（改用预生成的 `resources/icon.ico`）
 
 ## [3.0.0] - 2026-11-21
 
@@ -51,5 +57,6 @@
 - 如需自定义数据目录，设置环境变量 `TYPE2SPEECH_DATA_DIR`。
 - 旧历史记录的音频路径仍然有效；重新生成后新文件会写入新的数据目录。
 
-[Unreleased]: https://github.com/MakerYoung/Type2Speech3/compare/v3.0.0...HEAD
+[Unreleased]: https://github.com/MakerYoung/Type2Speech3/compare/v3.0.1...HEAD
+[3.0.1]: https://github.com/MakerYoung/Type2Speech3/releases/tag/v3.0.1
 [3.0.0]: https://github.com/MakerYoung/Type2Speech3/releases/tag/v3.0.0
