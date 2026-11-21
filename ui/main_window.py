@@ -30,6 +30,7 @@ from core.workers.voice_loader_worker import VoiceLoaderWorker
 from ui.components.float_input_window import FloatInputWindow
 from ui.components.hotkey_dialog import HotkeyBindDialog, SystemHotkeyDialog
 from ui.components.list_delegate import HotkeyItemDelegate
+from utils.explorer import reveal_in_explorer
 from utils.window_manager import WindowManager
 from version import APP_VERSION
 
@@ -87,6 +88,12 @@ class MainWindow(QMainWindow):
 
         # ---------- UI ----------
         self._init_ui()
+        self.game_status_timer = QTimer(self)
+        self.game_status_timer.setInterval(1000)
+        self.game_status_timer.timeout.connect(self._poll_game_status)
+        self.game_status_timer.start()
+        self._poll_game_status()
+
         self.load_presets_text()
         self.load_preset_audio()
         self.load_history_ui()
@@ -234,6 +241,20 @@ class MainWindow(QMainWindow):
 
         layout.addStretch(1)
         self.main_layout.addLayout(layout)
+
+        game_layout = QHBoxLayout()
+        game_layout.addWidget(QLabel("游戏检测:"))
+        self.game_status_label = QLabel("未命中")
+        self.game_status_label.setMinimumWidth(160)
+        self.game_status_label.setStyleSheet("color: #777;")
+        game_layout.addWidget(self.game_status_label)
+        self.btn_games = QPushButton("游戏列表")
+        self.btn_games.setFixedWidth(80)
+        self.btn_games.setToolTip("编辑游戏窗口关键词（匹配标题或进程名，每行一个）")
+        self.btn_games.clicked.connect(self.open_games_dialog)
+        game_layout.addWidget(self.btn_games)
+        game_layout.addStretch(1)
+        self.main_layout.addLayout(game_layout)
 
     def _init_device_ui(self):
         layout = QHBoxLayout()
@@ -626,9 +647,11 @@ class MainWindow(QMainWindow):
 
         if item_type == "text":
             edit_action = menu.addAction("📝 编辑此文本")
+            open_action = menu.addAction("📂 打开数据文件夹")
             delete_action = menu.addAction("🗑️ 删除此预设")
         else:
             edit_action = None
+            open_action = menu.addAction("📂 打开所在文件夹")
             delete_action = menu.addAction("🗑️ 删除此音频文件")
 
         action = menu.exec_(list_widget.mapToGlobal(pos))
@@ -639,6 +662,11 @@ class MainWindow(QMainWindow):
             self._apply_hotkey(action_id, "")
         elif edit_action is not None and action == edit_action:
             self._edit_preset_text(item)
+        elif action == open_action:
+            if item_type == "text":
+                self._open_path(self.paths.conf_dir)
+            else:
+                self._open_path(item.data(Qt.UserRole))
         elif action == delete_action:
             if item_type == "text":
                 self._delete_preset_text(item)
@@ -770,6 +798,54 @@ class MainWindow(QMainWindow):
                 QMessageBox.information(self, "成功", "全局系统快捷键已更新！")
         self.hotkey_service.rebuild()
 
+    def open_games_dialog(self):
+        games = self.config.get("games", [])
+        text, ok = QInputDialog.getMultiLineText(
+            self,
+            "游戏窗口匹配列表",
+            "每行一个关键词，匹配窗口标题或进程名（不区分大小写）：",
+            "\n".join(games),
+        )
+        if not ok:
+            return
+
+        seen = set()
+        new_games = []
+        for line in text.splitlines():
+            game = line.strip()
+            if game and game.lower() not in seen:
+                seen.add(game.lower())
+                new_games.append(game)
+        if not new_games:
+            QMessageBox.warning(self, "提示", "至少保留一个游戏关键词。")
+            return
+
+        self.config_manager.save({"games": new_games})
+        self.window_manager.set_target_games(new_games)
+        self._poll_game_status()
+        QMessageBox.information(self, "成功", f"已保存 {len(new_games)} 个游戏关键词。")
+
+    def _poll_game_status(self):
+        match = self.window_manager.foreground_match()
+        if match is not None:
+            self.game_status_label.setText(f"✅ 已命中：{match.keyword}")
+            self.game_status_label.setStyleSheet("color: #107C10; font-weight: bold;")
+            detail = match.title
+            if match.exe_name:
+                detail += f"\n{match.exe_name}"
+            self.game_status_label.setToolTip(detail)
+        else:
+            self.game_status_label.setText("未命中")
+            self.game_status_label.setStyleSheet("color: #777;")
+            self.game_status_label.setToolTip("当前前台窗口不在游戏列表中")
+
+    def _open_path(self, path):
+        if not path:
+            QMessageBox.information(self, "提示", "该记录没有关联文件。")
+            return
+        if not reveal_in_explorer(path):
+            QMessageBox.warning(self, "无法打开", f"路径不存在：{path}")
+
     def handle_hotkey(self, action_id: str):
         logging.info("触发热键动作: %s", action_id)
 
@@ -840,6 +916,7 @@ class MainWindow(QMainWindow):
             volume=self.tts_volume,
             open_game_mic=self.mic_statu,
             speak_key=self.speak_key,
+            game_games=list(self.config.get("games", [])),
         )
 
     def show_history_context_menu(self, pos):
@@ -853,6 +930,7 @@ class MainWindow(QMainWindow):
         menu = QMenu()
         play_action = menu.addAction("▶️ 播放此记录")
         preset_action = menu.addAction("⭐ 提升为预设文本")
+        open_action = menu.addAction("📂 打开所在文件夹")
         menu.addSeparator()
         delete_action = menu.addAction("🗑️ 删除此记录 (同步删除音频)")
 
@@ -865,6 +943,8 @@ class MainWindow(QMainWindow):
                 QMessageBox.information(self, "成功", "已成功添加到预设文本！")
             else:
                 QMessageBox.information(self, "提示", "该预设已存在。")
+        elif action == open_action:
+            self._open_path(record.path)
         elif action == delete_action:
             reply = QMessageBox.question(
                 self, "确认删除", "确定要删除这条历史记录及硬盘上的关联音频文件吗？",
@@ -960,6 +1040,7 @@ class MainWindow(QMainWindow):
             volume=self.tts_volume,
             open_game_mic=self.mic_statu,
             speak_key=self.speak_key,
+            game_games=list(self.config.get("games", [])),
         )
 
     def repeat_last_play(self):
@@ -990,6 +1071,7 @@ class MainWindow(QMainWindow):
             volume=self.preset_audio_volume,
             open_game_mic=self.mic_statu,
             speak_key=self.speak_key,
+            game_games=list(self.config.get("games", [])),
         )
 
     def stop_playback(self):
@@ -1178,6 +1260,7 @@ class MainWindow(QMainWindow):
         return super().eventFilter(obj, event)
 
     def closeEvent(self, event):
+        self.game_status_timer.stop()
         self.playback.shutdown()
         self.hotkey_service.stop()
         if self.float_window is not None:

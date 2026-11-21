@@ -17,6 +17,71 @@ DEFAULT_SYS_HOTKEYS = {
     "sys_float_window": "alt+num_dot",
 }
 
+OLD_DEFAULT_GAMES = [
+    "Counter-Strike 2",
+    "Counter-Strike",
+    "VALORANT",
+    "League of Legends",
+    "LeagueClient",
+    "Dota 2",
+    "DOTA 2",
+    "Overwatch",
+    "Apex Legends",
+    "Fortnite",
+    "PUBG",
+    "Rocket League",
+]
+
+DEFAULT_GAMES = [
+    "Counter-Strike 2",
+    "Counter-Strike",
+    "VALORANT",
+    "League of Legends",
+    "LeagueClient",
+    "Dota 2",
+    "Overwatch",
+    "Apex Legends",
+    "Fortnite",
+    "PUBG",
+    "Rocket League",
+    "Delta Force",
+    "三角洲行动",
+    "Naraka",
+    "永劫无间",
+    "CrossFire",
+    "穿越火线",
+    "Call of Duty",
+    "Warzone",
+    "Rainbow Six",
+    "彩虹六号",
+    "Escape from Tarkov",
+    "Battlefield",
+    "Dead by Daylight",
+    "Grand Theft Auto V",
+    "GTA5",
+    "FiveM",
+    "Minecraft",
+    "Roblox",
+    "Arena Breakout",
+    "暗区突围",
+    "Marvel Rivals",
+    "漫威争锋",
+    "The Finals",
+    "Hunt: Showdown",
+    "Ready or Not",
+    "Hell Let Loose",
+    "DayZ",
+    "Destiny 2",
+    "Palworld",
+    "幻兽帕鲁",
+    "Once Human",
+    "七日世界",
+    "Where Winds Meet",
+    "燕云十六声",
+    "Halo Infinite",
+    "Titanfall 2",
+]
+
 DEFAULT_CONFIG: dict[str, Any] = {
     "last_device_name": None,
     "presets_text": [],
@@ -28,20 +93,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "tts_volume": 1.0,
     "preset_audio_volume": 0.5,
     "speak_key": "pagedown",
-    "games": [
-        "Counter-Strike 2",
-        "Counter-Strike",
-        "VALORANT",
-        "League of Legends",
-        "LeagueClient",
-        "Dota 2",
-        "DOTA 2",
-        "Overwatch",
-        "Apex Legends",
-        "Fortnite",
-        "PUBG",
-        "Rocket League",
-    ],
+    "games": list(DEFAULT_GAMES),
     "auto_clear_history": False,
     "audio_hotkeys": {},
     "text_hotkeys": {},
@@ -68,6 +120,22 @@ def _clamp(value: Any, low: float, high: float, fallback: float) -> float:
         return max(low, min(high, float(value)))
     except (TypeError, ValueError):
         return fallback
+
+
+def _normalize_games(value: Any) -> list[str]:
+    games = [str(g).strip() for g in _as_list(value) if str(g).strip()]
+    # 未自定义过的旧默认列表自动升级到扩充后的列表
+    if not games or set(games) == set(OLD_DEFAULT_GAMES):
+        return list(DEFAULT_GAMES)
+
+    deduped: list[str] = []
+    seen: set[str] = set()
+    for game in games:
+        key = game.lower()
+        if key not in seen:
+            seen.add(key)
+            deduped.append(game)
+    return deduped
 
 
 class ConfigManager:
@@ -100,7 +168,7 @@ class ConfigManager:
         merged["audio_hotkeys"] = _as_dict(merged.get("audio_hotkeys"))
         merged["text_hotkeys"] = _as_dict(merged.get("text_hotkeys"))
         merged["sys_hotkeys"] = {**DEFAULT_SYS_HOTKEYS, **_as_dict(merged.get("sys_hotkeys"))}
-        merged["games"] = _as_list(merged.get("games")) or list(self.defaults.get("games", []))
+        merged["games"] = _normalize_games(merged.get("games"))
         merged["tts_volume"] = _clamp(merged.get("tts_volume"), 0.0, 1.0, 1.0)
         merged["preset_audio_volume"] = _clamp(
             merged.get("preset_audio_volume"), 0.0, 1.0, 0.5

@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from app.config import ConfigManager
+from app.config import DEFAULT_GAMES, OLD_DEFAULT_GAMES, ConfigManager
 
 
 class ConfigManagerTests(unittest.TestCase):
@@ -46,6 +46,20 @@ class ConfigManagerTests(unittest.TestCase):
         config = ConfigManager(self.path).load()
         self.assertEqual(config["presets_text"], [])
         self.assertEqual(config["last_engine"], "PyTTSX3")
+
+    def test_old_default_games_are_upgraded(self):
+        self.path.parent.mkdir(parents=True)
+        self.path.write_text(json.dumps({"games": OLD_DEFAULT_GAMES}), encoding="utf-8")
+        config = ConfigManager(self.path).load()
+        self.assertEqual(config["games"], DEFAULT_GAMES)
+        self.assertIn("Delta Force", config["games"])
+
+    def test_custom_games_are_preserved(self):
+        self.path.parent.mkdir(parents=True)
+        self.path.write_text(json.dumps({"games": ["My Game", "my game", "Other"]}),
+                             encoding="utf-8")
+        config = ConfigManager(self.path).load()
+        self.assertEqual(config["games"], ["My Game", "Other"])
 
 
 if __name__ == "__main__":

@@ -12,6 +12,7 @@ from PyQt5.QtCore import QObject, QRunnable, pyqtSignal
 
 from core.engines.tts_engine import TTSEngine
 from utils.keyboard_injector import KeyboardInjector
+from utils.window_manager import WindowManager
 
 
 class TTSWorker(QRunnable):
@@ -35,6 +36,7 @@ class TTSWorker(QRunnable):
         volume: float = 1.0,
         open_game_mic: bool = False,
         speak_key: str = "pagedown",
+        game_games: list[str] | None = None,
         is_history_play: bool = False,
     ):
         super().__init__()
@@ -48,6 +50,7 @@ class TTSWorker(QRunnable):
         self.volume = float(volume)
         self.open_game_mic = open_game_mic
         self.speak_key = speak_key
+        self.game_games = list(game_games or [])
         self.is_stopped = False
         self.setAutoDelete(True)
 
@@ -68,8 +71,12 @@ class TTSWorker(QRunnable):
                 if self.is_stopped:
                     return
                 sd.stop()
-                if self.open_game_mic:
+                if self.open_game_mic and self._ensure_game_window():
                     self._play_with_mic_key()
+                elif self.open_game_mic:
+                    # 播放瞬间没有命中游戏窗口：只播放，不把开麦键注入到其他程序
+                    logging.warning("未检测到匹配的游戏窗口，本次不注入开麦键")
+                    self._play_audio_file()
                 else:
                     self._play_audio_file()
 
@@ -82,6 +89,16 @@ class TTSWorker(QRunnable):
         finally:
             if self.is_stopped:
                 self.signals.stopped_signal.emit()
+
+    def _ensure_game_window(self) -> bool:
+        """播放前最后一刻再确认一次游戏窗口，减少切窗导致的误注入。"""
+        if not self.game_games:
+            return False
+        try:
+            return WindowManager(self.game_games).focus_game_if_needed(True)
+        except Exception as exc:
+            logging.error("游戏窗口实时检测失败: %s", exc)
+            return False
 
     def _play_with_mic_key(self):
         try:

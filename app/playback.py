@@ -42,6 +42,7 @@ class PlaybackController(QObject):
         volume: float,
         open_game_mic: bool,
         speak_key: str,
+        game_games: list[str] | None = None,
     ) -> bool:
         worker = TTSWorker(
             rate=rate,
@@ -52,6 +53,7 @@ class PlaybackController(QObject):
             volume=volume,
             open_game_mic=open_game_mic,
             speak_key=speak_key,
+            game_games=game_games,
             is_history_play=False,
         )
         meta = {
@@ -71,6 +73,7 @@ class PlaybackController(QObject):
         volume: float,
         open_game_mic: bool,
         speak_key: str,
+        game_games: list[str] | None = None,
     ) -> bool:
         worker = TTSWorker(
             rate="",
@@ -81,6 +84,7 @@ class PlaybackController(QObject):
             volume=volume,
             open_game_mic=open_game_mic,
             speak_key=speak_key,
+            game_games=game_games,
             is_history_play=True,
         )
         return self._start(worker, None)
