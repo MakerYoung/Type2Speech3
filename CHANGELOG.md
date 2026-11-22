@@ -6,6 +6,8 @@
 
 ## [Unreleased]
 
+## [3.1.0] - 2026-11-22
+
 ### Added
 
 - 游戏窗口识别支持进程名与内置别名（如 `cs2.exe`、`VALORANT-Win64-Shipping.exe`、`LeagueClientUx.exe`）
@@ -19,6 +21,12 @@
 - 播放前做最后一次游戏窗口校验：开麦状态下未命中时只播放、不注入开麦键，避免语音漏到其他程序
 - 已在前台游戏窗口时不再重复抢焦点
 - 发布流水线新增成品启动冒烟测试，打包后自动验证 exe 可启动并生成配置
+
+### Upgrade Notes
+
+- 无破坏性变更；旧配置与历史记录可继续使用。
+- 未自定义过的旧默认游戏列表会自动升级到扩充后的列表。
+- Qt 绑定迁移不影响数据目录与配置格式。
 
 ## [3.0.1] - 2026-11-21
 
@@ -71,6 +79,7 @@
 - 如需自定义数据目录，设置环境变量 `TYPE2SPEECH_DATA_DIR`。
 - 旧历史记录的音频路径仍然有效；重新生成后新文件会写入新的数据目录。
 
-[Unreleased]: https://github.com/MakerYoung/Type2Speech3/compare/v3.0.1...HEAD
+[Unreleased]: https://github.com/MakerYoung/Type2Speech3/compare/v3.1.0...HEAD
+[3.1.0]: https://github.com/MakerYoung/Type2Speech3/releases/tag/v3.1.0
 [3.0.1]: https://github.com/MakerYoung/Type2Speech3/releases/tag/v3.0.1
 [3.0.0]: https://github.com/MakerYoung/Type2Speech3/releases/tag/v3.0.0
